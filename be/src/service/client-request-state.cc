@@ -1362,8 +1362,10 @@ Status ClientRequestState::Cancel(
           || retry_state() == RetryState::RETRYING);
     }
 
-    admission_control_client_->CancelAdmission();
-    is_cancelled_ = true;
+    if (!is_cancelled_) {
+      admission_control_client_->CancelAdmission();
+      is_cancelled_ = true;
+    }
   } // Release lock_ before doing cancellation work.
 
   // Cancel and close child queries before cancelling parent. 'lock_' should not be held
