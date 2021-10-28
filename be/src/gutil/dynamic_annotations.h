@@ -595,11 +595,14 @@ void __asan_poison_memory_region(void const volatile *addr, size_t size);
 // (un)poison memory in the same memory region simultaneously.
 void __asan_unpoison_memory_region(void const volatile *addr, size_t size);
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wmacro-redefined"
 // User code should use macros instead of functions.
 #define ASAN_POISON_MEMORY_REGION(addr, size)   \
   __asan_poison_memory_region((addr), (size))
 #define ASAN_UNPOISON_MEMORY_REGION(addr, size) \
   __asan_unpoison_memory_region((addr), (size))
+#pragma clang diagnostic pop
 #else
 #define ASAN_POISON_MEMORY_REGION(addr, size)   \
   ((void)(addr), (void)(size))
