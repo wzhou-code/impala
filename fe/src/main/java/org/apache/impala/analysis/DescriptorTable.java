@@ -25,6 +25,7 @@ import java.util.Map;
 import java.util.Set;
 
 import org.apache.impala.catalog.ArrayType;
+import org.apache.impala.catalog.FeKuduTable;
 import org.apache.impala.catalog.FeTable;
 import org.apache.impala.catalog.FeView;
 import org.apache.impala.catalog.StructField;
@@ -78,6 +79,9 @@ public class DescriptorTable {
     tupleDescs_.put(d.getId(), d);
     // create copies of slots
     TupleDescriptor src = tupleDescs_.get(srcId);
+    if (src.getPath() != null && (src.getTable() instanceof FeKuduTable)) {
+      d.setPath(src.getPath()); // copy path from source
+    }
     for (SlotDescriptor slot: src.getSlots()) {
       copySlotDescriptor(d, slot);
     }
