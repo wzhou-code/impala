@@ -197,6 +197,8 @@ Status HostPortFromSockaddrReplaceWildcard(const Sockaddr& addr, HostPort* hp);
 // is non-NULL (mostly useful for testing).
 void TryRunLsof(const Sockaddr& addr, std::vector<std::string>* log = nullptr);
 
+void TryRunNetstat(const Sockaddr& addr, std::vector<std::string>* log = nullptr);
+
 // BindMode lets you specify the socket binding mode for RPC and/or HTTP server.
 // A) LOOPBACK binds each server to loopback ip address "127.0.0.1".
 //

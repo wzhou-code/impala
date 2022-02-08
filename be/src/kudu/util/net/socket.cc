@@ -24,10 +24,12 @@
 #include <sys/time.h>
 #include <unistd.h>
 
+#include <atomic>
 #include <cerrno>
 #include <cinttypes>
 #include <cstring>
 #include <limits>
+#include <mutex>
 #include <ostream>
 #include <string>
 
@@ -37,6 +39,7 @@
 #include "kudu/gutil/basictypes.h"
 #include "kudu/gutil/port.h"
 #include "kudu/gutil/stringprintf.h"
+#include "kudu/gutil/strings/join.h"
 #include "kudu/gutil/strings/substitute.h"
 #include "kudu/util/debug/trace_event.h"
 #include "kudu/util/errno.h"
@@ -64,6 +67,14 @@ using std::string;
 using strings::Substitute;
 
 namespace kudu {
+
+static std::atomic<uint32_t> open_count(0);
+static std::atomic<uint32_t> bind_count(0);
+static std::atomic<uint32_t> listen_count(0);
+static std::atomic<uint32_t> accept_count(0);
+static std::atomic<uint32_t> connect_count(0);
+static std::atomic<uint32_t> close_count(0);
+static std::atomic<uint32_t> shutdown_count(0);
 
 Socket::Socket()
   : fd_(-1) {
@@ -100,6 +111,8 @@ Status Socket::Close() {
     return Status::NetworkError("close error", ErrnoToString(err), err);
   }
   fd_ = -1;
+  close_count++;
+  LOG(INFO) << "Socket::Close(), count: " << close_count;
   return Status::OK();
 }
 
@@ -117,6 +130,8 @@ Status Socket::Shutdown(bool shut_read, bool shut_write) {
     int err = errno;
     return Status::NetworkError("shutdown error", ErrnoToString(err), err);
   }
+  shutdown_count++;
+  LOG(INFO) << "Socket::Shutdown(), count: " << shutdown_count;
   return Status::OK();
 }
 
@@ -138,6 +153,7 @@ Status Socket::Init(int flags) {
     return Status::NetworkError("error opening socket", ErrnoToString(err), err);
   }
 
+  open_count++;
   return Status::OK();
 }
 
@@ -156,6 +172,7 @@ Status Socket::Init(int flags) {
   int set = 1;
   RETURN_NOT_OK_PREPEND(SetSockOpt(SOL_SOCKET, SO_NOSIGPIPE, set),
                         "failed to set SO_NOSIGPIPE");
+  open_count++;
   return Status::OK();
 }
 
@@ -268,6 +285,7 @@ Status Socket::Listen(int listen_queue_size) {
     int err = errno;
     return Status::NetworkError("listen() error", ErrnoToString(err));
   }
+  listen_count++;
   return Status::OK();
 }
 
@@ -326,6 +344,7 @@ Status Socket::Bind(const Sockaddr& bind_addr) {
     return s;
   }
 
+  bind_count++;
   return Status::OK();
 }
 
@@ -363,6 +382,10 @@ Status Socket::Accept(Socket *new_conn, Sockaddr *remote, int flags) {
   *remote = addr;
   TRACE_EVENT_INSTANT1("net", "Accepted", TRACE_EVENT_SCOPE_THREAD,
                        "remote", remote->ToString());
+  accept_count++;
+  if (accept_count % 5 == 0) {
+    LOG(INFO) << "Socket::Accept(), count: " << accept_count;
+  }
   return Status::OK();
 }
 
@@ -377,7 +400,26 @@ Status Socket::BindForOutgoingConnection() {
   return Status::OK();
 }
 
+static void WriteNetstatLog(const Sockaddr& remote) {
+  vector <string> msg_lines;
+  // TryRunLsof(remote, &msg_lines);
+  // LOG(WARNING) << JoinStrings(msg_lines, "\n");
+  // msg_lines.clear();
+  TryRunNetstat(remote, &msg_lines);
+  LOG(WARNING) << JoinStrings(msg_lines, "\n");
+
+  LOG(WARNING) << "socket open count: " << open_count.load(std::memory_order_relaxed)
+               << ", socket bind count: " << bind_count.load(std::memory_order_relaxed)
+               << ", socket listen count: " << listen_count.load(std::memory_order_relaxed)
+               << ", socket accept count: " << accept_count.load(std::memory_order_relaxed)
+               << ", socket connect count: " << connect_count.load(std::memory_order_relaxed)
+               << ", socket close count: " << close_count.load(std::memory_order_relaxed)
+               << ", socket shutdown count: " << shutdown_count.load(std::memory_order_relaxed);
+}
+
 Status Socket::Connect(const Sockaddr &remote) {
+  static std::mutex lock;
+  static time_t last_log_timestamp = 0;
   TRACE_EVENT1("net", "Socket::Connect",
                "remote", remote.ToString());
   if (PREDICT_FALSE(!FLAGS_local_ip_for_outbound_sockets.empty())) {
@@ -392,7 +434,35 @@ Status Socket::Connect(const Sockaddr &remote) {
       fd_, reinterpret_cast<const struct sockaddr*>(&addr), sizeof(addr)));
   if (ret < 0) {
     int err = errno;
+    if (err == EINPROGRESS) {
+      std::lock_guard<std::mutex> l(lock);
+      // socket is non-blocking and the connection cannot be completed immediately.
+      // errno: 115 - Operation now in progress.
+      connect_count++;
+      if (connect_count % 5 == 0) {
+        LOG(INFO) << "Socket::Connect(), count: " << connect_count;
+      }
+      if (connect_count % 50 == 0) {
+        WriteNetstatLog(remote);
+      }
+    } else if (err == EADDRNOTAVAIL) { // errno: 99 - Cannot assign requested address
+      std::lock_guard<std::mutex> l(lock);
+      // time rate: don't run netstat to log file in less than 30 seconds.
+      time_t now = time(nullptr);
+      if (now - last_log_timestamp >= 60) {
+        last_log_timestamp = now;
+        WriteNetstatLog(remote);
+      }
+    }
     return Status::NetworkError("connect(2) error", ErrnoToString(err), err);
+  }
+  {
+    std::lock_guard<std::mutex> l(lock);
+    connect_count++;
+    LOG(INFO) << "Socket::Connect(), count: " << connect_count;
+    if ((connect_count % 50) == 0) {
+      WriteNetstatLog(remote);
+    }
   }
   return Status::OK();
 }

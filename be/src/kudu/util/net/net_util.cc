@@ -473,6 +473,25 @@ void TryRunLsof(const Sockaddr& addr, vector<string>* log) {
   LOG_STRING(WARNING, log) << results;
 }
 
+void TryRunNetstat(const Sockaddr& addr, vector<string>* log) {
+  string cmd = "export PATH=$$PATH:/bin:/usr/bin:/usr/sbin ; ";
+  cmd += "ss -s ; ";
+  cmd += "netstat -ant | grep " + addr.host() + " | wc -l ; ";
+  cmd += "netstat -ant | grep " + addr.host() + " | awk '{print $6}' | sort | uniq -c | sort -n ; ";
+  cmd += "netstat -natu | awk '{print $5}' | cut -d: -f1 | sort | uniq -c | sort -n ; ";
+  LOG_STRING(WARNING, log)
+      << "Trying to run netstat to find active connections with "
+      << addr.host();
+  LOG_STRING(WARNING, log) << "$ " << cmd;
+  vector<string> argv = { "bash", "-c", cmd };
+  string results;
+  Status s = Subprocess::Call(argv, "", &results);
+  if (PREDICT_FALSE(!s.ok())) {
+    LOG_STRING(WARNING, log) << s.ToString();
+  }
+  LOG_STRING(WARNING, log) << results;
+}
+
 string GetBindIpForDaemon(int index, BindMode bind_mode) {
   // The server index should range from (0, max_servers] since
   // the range for last octet for a valid unicast IP address ranges is (0, 255).
