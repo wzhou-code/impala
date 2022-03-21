@@ -35,6 +35,7 @@
 #include "util/network-util.h"
 #include "util/openssl-util.h"
 #include "util/test-info.h"
+#include "util/uid-util.h"
 
 #include "gen-cpp/rpc_test.proxy.h"
 #include "gen-cpp/rpc_test.service.h"
@@ -126,16 +127,18 @@ class RpcMgrTest : public testing::Test {
   }
 
   // Utility function which alternately makes requests to PingService and ScanMemService.
-  Status RunMultipleServicesTest(RpcMgr* rpc_mgr, const TNetworkAddress& krpc_address);
+  Status RunMultipleServicesTest(RpcMgr* rpc_mgr, const NetworkAddressPB& krpc_address);
 
  protected:
-  TNetworkAddress krpc_address_;
+  NetworkAddressPB krpc_address_;
   RpcMgr rpc_mgr_;
 
   virtual void SetUp() {
     IpAddr ip;
     ASSERT_OK(HostnameToIpAddr(FLAGS_hostname, &ip));
-    krpc_address_ = MakeNetworkAddress(ip, FindUnusedEphemeralPort());
+    UniqueIdPB backend_id;
+    UUIDToUniqueIdPB(boost::uuids::random_generator()(), &backend_id);
+    krpc_address_ = MakeNetworkAddressPB(ip, FindUnusedEphemeralPort(), backend_id);
     exec_env_.reset(new ExecEnv());
     ASSERT_OK(rpc_mgr_.Init(krpc_address_));
   }
@@ -173,7 +176,7 @@ class PingServiceImpl : public PingServiceIf {
       mem_tracker_(-1, "Ping Service"),
       cb_(cb) {}
 
-  Status GetProxy(const TNetworkAddress& address, const std::string& hostname,
+  Status GetProxy(const NetworkAddressPB& address, const std::string& hostname,
       std::unique_ptr<PingServiceProxy>* proxy) {
     return rpc_mgr_->GetProxy(address, hostname, proxy);
   }
@@ -219,7 +222,7 @@ class ScanMemServiceImpl : public ScanMemServiceIf {
       mem_tracker_(-1, "ScanMem Service") {
   }
 
-  Status GetProxy(const TNetworkAddress& address, const std::string& hostname,
+  Status GetProxy(const NetworkAddressPB& address, const std::string& hostname,
       std::unique_ptr<ScanMemServiceProxy>* proxy) {
     return rpc_mgr_->GetProxy(address, hostname, proxy);
   }
@@ -284,7 +287,7 @@ class FailingPingServiceProxy {
 };
 
 Status RpcMgrTest::RunMultipleServicesTest(
-    RpcMgr* rpc_mgr, const TNetworkAddress& krpc_address) {
+    RpcMgr* rpc_mgr, const NetworkAddressPB& krpc_address) {
   // Test that a service can be started, and will respond to requests.
   GeneratedServiceIf* ping_impl = TakeOverService(
       make_unique<PingServiceImpl>(rpc_mgr));

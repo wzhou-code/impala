@@ -57,6 +57,8 @@ Status GetHostname(std::string* hostname) WARN_UNUSED_RESULT;
 /// Utility methods because Thrift/protobuf do not supply useful constructors
 TNetworkAddress MakeNetworkAddress(const std::string& hostname, int port);
 NetworkAddressPB MakeNetworkAddressPB(const std::string& hostname, int port);
+NetworkAddressPB MakeNetworkAddressPB(const std::string& hostname, int port,
+    const UniqueIdPB& backend_id);
 
 /// Utility method to parse the given string into a network address.
 /// Accepted format: "host:port" or "host". For the latter format the port is set to zero.
@@ -82,11 +84,14 @@ TNetworkAddress FromNetworkAddressPB(const NetworkAddressPB& address);
 
 /// Utility method to convert a TNetworkAddress to a NetworkAddressPB.
 NetworkAddressPB FromTNetworkAddress(const TNetworkAddress& address);
+NetworkAddressPB FromTNetworkAddress(const TNetworkAddress& address,
+    const UniqueIdPB& backend_id);
 
-/// Utility method to convert TNetworkAddress to Kudu sock addr.
+/// Utility method to convert NetworkAddressPB to Kudu Sockaddr.
+/// If use_uds is true, set Kudu Sockaddr as UDS address.
 /// Note that 'address' has to contain a resolved IP address.
-Status TNetworkAddressToSockaddr(const TNetworkAddress& address,
-    kudu::Sockaddr* sockaddr);
+Status NetworkAddressPBToSockaddr(
+    const NetworkAddressPB& address, bool use_uds, kudu::Sockaddr* sockaddr);
 
 /// Returns a ephemeral port that is currently unused. Returns -1 on an error or if
 /// a free ephemeral port can't be found after 100 tries.

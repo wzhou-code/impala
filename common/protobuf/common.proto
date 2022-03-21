@@ -25,6 +25,11 @@ package impala;
 message NetworkAddressPB {
   required string hostname = 1;
   required int32 port = 2;
+  // Unix Domain Socket address. We use the unique name in "Abstract Namespace" as UDS
+  // address in the form of "@impala-krpc:<BackendId>". This field is optional.
+  // It is only used for KRPC bind/listen/connect when FLAGS_rpc_use_unix_domain_socket
+  // is set as true.
+  optional string uds_address = 3;
 }
 
 // Proto-serialized version of Impala's Status object.

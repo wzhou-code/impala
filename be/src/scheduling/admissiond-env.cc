@@ -88,12 +88,15 @@ Status AdmissiondEnv::Init() {
 
   http_handler_->RegisterHandlers(DaemonEnv::GetInstance()->webserver());
 
-  string ip_address;
+  IpAddr ip_address;
   RETURN_IF_ERROR(HostnameToIpAddr(FLAGS_hostname, &ip_address));
-  TNetworkAddress ip_addr_port;
-  ip_addr_port.__set_hostname(ip_address);
-  ip_addr_port.__set_port(FLAGS_admission_service_port);
-  RETURN_IF_ERROR(rpc_mgr_->Init(ip_addr_port));
+  // TODO: advertise BackendId of admissiond to the other Impala daemons via state-store
+  // registration. Use a fixed UUID now.
+  backend_id_.set_hi(12345678);
+  backend_id_.set_lo(87654321);
+  krpc_address_ =
+      MakeNetworkAddressPB(ip_address, FLAGS_admission_service_port, backend_id_);
+  RETURN_IF_ERROR(rpc_mgr_->Init(krpc_address_));
   admission_control_svc_.reset(
       new AdmissionControlService(DaemonEnv::GetInstance()->metrics()));
   RETURN_IF_ERROR(admission_control_svc_->Init());

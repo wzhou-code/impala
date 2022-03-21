@@ -169,6 +169,15 @@ NetworkAddressPB MakeNetworkAddressPB(const string& hostname, int port) {
   return ret;
 }
 
+NetworkAddressPB MakeNetworkAddressPB(const std::string& hostname, int port,
+    const UniqueIdPB& backend_id) {
+  NetworkAddressPB ret;
+  ret.set_hostname(hostname);
+  ret.set_port(port);
+  ret.set_uds_address(strings::Substitute("@impala-krpc:$0", PrintId(backend_id)));
+  return ret;
+}
+
 bool IsWildcardAddress(const string& ipaddress) {
   return ipaddress == "0.0.0.0";
 }
@@ -199,6 +208,15 @@ NetworkAddressPB FromTNetworkAddress(const TNetworkAddress& address) {
   return address_pb;
 }
 
+NetworkAddressPB FromTNetworkAddress(const TNetworkAddress& address,
+    const UniqueIdPB& backend_id) {
+  NetworkAddressPB address_pb;
+  address_pb.set_hostname(address.hostname);
+  address_pb.set_port(address.port);
+  address_pb.set_uds_address(strings::Substitute("@impala-krpc:$0", PrintId(backend_id)));
+  return address_pb;
+}
+
 /// Pick a random port in the range of ephemeral ports
 /// https://tools.ietf.org/html/rfc6335
 int FindUnusedEphemeralPort() {
@@ -225,13 +243,17 @@ int FindUnusedEphemeralPort() {
   return -1;
 }
 
-Status TNetworkAddressToSockaddr(const TNetworkAddress& address,
-    kudu::Sockaddr* sockaddr) {
-  DCHECK(IsResolvedAddress(address));
-  KUDU_RETURN_IF_ERROR(
-      sockaddr->ParseString(TNetworkAddressToString(address), address.port),
-      "Failed to parse address to Kudu Sockaddr.");
+Status NetworkAddressPBToSockaddr(
+    const NetworkAddressPB& address, bool use_uds, kudu::Sockaddr* sockaddr) {
+  if (use_uds) {
+    DCHECK(!address.uds_address().empty());
+    KUDU_RETURN_IF_ERROR(sockaddr->ParseUnixDomainPath(address.uds_address()),
+        "Invalid UNIX domain socket address.");
+  } else {
+    DCHECK(IsResolvedAddress(address));
+    KUDU_RETURN_IF_ERROR(sockaddr->ParseString(address.hostname(), address.port()),
+        "Failed to parse IP address to Kudu Sockaddr.");
+  }
   return Status::OK();
 }
-
 }

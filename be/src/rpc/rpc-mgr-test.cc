@@ -43,12 +43,14 @@ TEST_F(RpcMgrTest, MultipleServicesTls) {
   // new gtest params to turn on TLS which needs to be a coordinated change across
   // rpc-mgr-test and thrift-server-test.
   RpcMgr tls_rpc_mgr(IsInternalTlsConfigured());
-  TNetworkAddress tls_krpc_address;
+  NetworkAddressPB tls_krpc_address;
   IpAddr ip;
   ASSERT_OK(HostnameToIpAddr(FLAGS_hostname, &ip));
 
   int32_t tls_service_port = FindUnusedEphemeralPort();
-  tls_krpc_address = MakeNetworkAddress(ip, tls_service_port);
+  UniqueIdPB backend_id;
+  UUIDToUniqueIdPB(boost::uuids::random_generator()(), &backend_id);
+  tls_krpc_address = MakeNetworkAddressPB(ip, tls_service_port, backend_id);
 
   ScopedSetTlsFlags s(SERVER_CERT, PRIVATE_KEY, SERVER_CERT);
   ASSERT_OK(tls_rpc_mgr.Init(tls_krpc_address));
@@ -67,12 +69,14 @@ TEST_F(RpcMgrTest, BadCertificateTls) {
   ScopedSetTlsFlags s(SERVER_CERT, PRIVATE_KEY, "unknown");
 
   RpcMgr tls_rpc_mgr(IsInternalTlsConfigured());
-  TNetworkAddress tls_krpc_address;
+  NetworkAddressPB tls_krpc_address;
   IpAddr ip;
   ASSERT_OK(HostnameToIpAddr(FLAGS_hostname, &ip));
 
   int32_t tls_service_port = FindUnusedEphemeralPort();
-  tls_krpc_address = MakeNetworkAddress(ip, tls_service_port);
+  UniqueIdPB backend_id;
+  UUIDToUniqueIdPB(boost::uuids::random_generator()(), &backend_id);
+  tls_krpc_address = MakeNetworkAddressPB(ip, tls_service_port, backend_id);
 
   ASSERT_FALSE(tls_rpc_mgr.Init(tls_krpc_address).ok());
   tls_rpc_mgr.Shutdown();
@@ -84,12 +88,14 @@ TEST_F(RpcMgrTest, BadPasswordTls) {
       "echo badpassword");
 
   RpcMgr tls_rpc_mgr(IsInternalTlsConfigured());
-  TNetworkAddress tls_krpc_address;
+  NetworkAddressPB tls_krpc_address;
   IpAddr ip;
   ASSERT_OK(HostnameToIpAddr(FLAGS_hostname, &ip));
 
   int32_t tls_service_port = FindUnusedEphemeralPort();
-  tls_krpc_address = MakeNetworkAddress(ip, tls_service_port);
+  UniqueIdPB backend_id;
+  UUIDToUniqueIdPB(boost::uuids::random_generator()(), &backend_id);
+  tls_krpc_address = MakeNetworkAddressPB(ip, tls_service_port, backend_id);
 
   ASSERT_FALSE(tls_rpc_mgr.Init(tls_krpc_address).ok());
   tls_rpc_mgr.Shutdown();
@@ -101,12 +107,14 @@ TEST_F(RpcMgrTest, CorrectPasswordTls) {
       "echo password");
 
   RpcMgr tls_rpc_mgr(IsInternalTlsConfigured());
-  TNetworkAddress tls_krpc_address;
+  NetworkAddressPB tls_krpc_address;
   IpAddr ip;
   ASSERT_OK(HostnameToIpAddr(FLAGS_hostname, &ip));
 
   int32_t tls_service_port = FindUnusedEphemeralPort();
-  tls_krpc_address = MakeNetworkAddress(ip, tls_service_port);
+  UniqueIdPB backend_id;
+  UUIDToUniqueIdPB(boost::uuids::random_generator()(), &backend_id);
+  tls_krpc_address = MakeNetworkAddressPB(ip, tls_service_port, backend_id);
 
   ASSERT_OK(tls_rpc_mgr.Init(tls_krpc_address));
   ASSERT_OK(RunMultipleServicesTest(&tls_rpc_mgr, tls_krpc_address));
@@ -119,12 +127,14 @@ TEST_F(RpcMgrTest, BadCiphersTls) {
   ScopedSetTlsFlags s(SERVER_CERT, PRIVATE_KEY, SERVER_CERT, "", "not_a_cipher");
 
   RpcMgr tls_rpc_mgr(IsInternalTlsConfigured());
-  TNetworkAddress tls_krpc_address;
+  NetworkAddressPB tls_krpc_address;
   IpAddr ip;
   ASSERT_OK(HostnameToIpAddr(FLAGS_hostname, &ip));
 
   int32_t tls_service_port = FindUnusedEphemeralPort();
-  tls_krpc_address = MakeNetworkAddress(ip, tls_service_port);
+  UniqueIdPB backend_id;
+  UUIDToUniqueIdPB(boost::uuids::random_generator()(), &backend_id);
+  tls_krpc_address = MakeNetworkAddressPB(ip, tls_service_port, backend_id);
 
   ASSERT_FALSE(tls_rpc_mgr.Init(tls_krpc_address).ok());
   tls_rpc_mgr.Shutdown();
@@ -137,12 +147,14 @@ TEST_F(RpcMgrTest, ValidCiphersTls) {
       TLS1_0_COMPATIBLE_CIPHER);
 
   RpcMgr tls_rpc_mgr(IsInternalTlsConfigured());
-  TNetworkAddress tls_krpc_address;
+  NetworkAddressPB tls_krpc_address;
   IpAddr ip;
   ASSERT_OK(HostnameToIpAddr(FLAGS_hostname, &ip));
 
   int32_t tls_service_port = FindUnusedEphemeralPort();
-  tls_krpc_address = MakeNetworkAddress(ip, tls_service_port);
+  UniqueIdPB backend_id;
+  UUIDToUniqueIdPB(boost::uuids::random_generator()(), &backend_id);
+  tls_krpc_address = MakeNetworkAddressPB(ip, tls_service_port, backend_id);
 
   ASSERT_OK(tls_rpc_mgr.Init(tls_krpc_address));
   ASSERT_OK(RunMultipleServicesTest(&tls_rpc_mgr, tls_krpc_address));
@@ -156,12 +168,14 @@ TEST_F(RpcMgrTest, ValidMultiCiphersTls) {
   ScopedSetTlsFlags s(SERVER_CERT, PRIVATE_KEY, SERVER_CERT, "", cipher_list);
 
   RpcMgr tls_rpc_mgr(IsInternalTlsConfigured());
-  TNetworkAddress tls_krpc_address;
+  NetworkAddressPB tls_krpc_address;
   IpAddr ip;
   ASSERT_OK(HostnameToIpAddr(FLAGS_hostname, &ip));
 
   int32_t tls_service_port = FindUnusedEphemeralPort();
-  tls_krpc_address = MakeNetworkAddress(ip, tls_service_port);
+  UniqueIdPB backend_id;
+  UUIDToUniqueIdPB(boost::uuids::random_generator()(), &backend_id);
+  tls_krpc_address = MakeNetworkAddressPB(ip, tls_service_port, backend_id);
 
   ASSERT_OK(tls_rpc_mgr.Init(tls_krpc_address));
   ASSERT_OK(RunMultipleServicesTest(&tls_rpc_mgr, tls_krpc_address));
@@ -248,12 +262,14 @@ TEST_F(RpcMgrTest, NegotiationTimeout) {
   auto s = ScopedFlagSetter<int32_t>::Make(&FLAGS_rpc_negotiation_timeout_ms, 0);
 
   RpcMgr secondary_rpc_mgr(IsInternalTlsConfigured());
-  TNetworkAddress secondary_krpc_address;
+  NetworkAddressPB secondary_krpc_address;
   IpAddr ip;
   ASSERT_OK(HostnameToIpAddr(FLAGS_hostname, &ip));
 
   int32_t secondary_service_port = FindUnusedEphemeralPort();
-  secondary_krpc_address = MakeNetworkAddress(ip, secondary_service_port);
+  UniqueIdPB backend_id;
+  UUIDToUniqueIdPB(boost::uuids::random_generator()(), &backend_id);
+  secondary_krpc_address = MakeNetworkAddressPB(ip, secondary_service_port, backend_id);
 
   ASSERT_OK(secondary_rpc_mgr.Init(secondary_krpc_address));
   ASSERT_FALSE(RunMultipleServicesTest(&secondary_rpc_mgr, secondary_krpc_address).ok());
@@ -325,7 +341,7 @@ TEST_F(RpcMgrTest, BusyService) {
   // service is too busy.
   auto s = ScopedFlagSetter<string>::Make(&FLAGS_debug_actions,
       Substitute("IMPALA_SERVICE_POOL:$0:$1:Ping:FAIL@0.5@REJECT_TOO_BUSY",
-          krpc_address_.hostname, krpc_address_.port));
+          krpc_address_.hostname(), krpc_address_.port()));
   PingRequestPB request;
   PingResponsePB response;
   const int64_t timeout_ms = 10 * MILLIS_PER_SEC;

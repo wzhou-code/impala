@@ -93,12 +93,28 @@ DEFINE_int32(rpc_negotiation_thread_count, 64,
 DEFINE_bool(rpc_use_loopback, false,
     "Always use loopback for local connections. This requires binding to all addresses, "
     "not just the KRPC address.");
+// Cannot set rpc_use_unix_domain_socket as true when rpc_use_loopback is set as true.
+DEFINE_bool(rpc_use_unix_domain_socket, true,
+    "Whether the KRPC client and server should use Unix domain socket. If enabled, "
+    "each daemon is identified with Unix Domain Socket address in the unique name in "
+    "\"Abstract Namespace\", in format @impala-krpc:<BackendId>. The KRPC server bind "
+    "to a Unix domain socket. KRPC Client attempt to connect to KRPC server via a Unix "
+    "domain socket.");
 
 namespace impala {
 
-Status RpcMgr::Init(const TNetworkAddress& address) {
+Status RpcMgr::Init(const NetworkAddressPB& address) {
   DCHECK(IsResolvedAddress(address));
   address_ = address;
+
+  if (FLAGS_rpc_use_unix_domain_socket) {
+    if (FLAGS_rpc_use_loopback) {
+      LOG(WARNING) << "Cannot use Unix Domain Socket when using loopback address.";
+      krpc_use_uds_ = false;
+    } else {
+      krpc_use_uds_ = true;
+    }
+  }
 
   // Log any RPCs which take longer than this threshold on the server.
   FLAGS_rpc_duration_too_long_ms = FLAGS_impala_slow_rpc_threshold_ms;
@@ -204,11 +220,15 @@ Status RpcMgr::StartServices() {
   Sockaddr sockaddr = Sockaddr::Wildcard();
   if (FLAGS_rpc_use_loopback) {
     // Listen on all addresses, including loopback.
-    sockaddr.set_port(address_.port);
+    sockaddr.set_port(address_.port());
     DCHECK(sockaddr.IsWildcard()) << sockaddr.ToString();
   } else {
     // Only listen on the canonical address for KRPC.
-    RETURN_IF_ERROR(TNetworkAddressToSockaddr(address_, &sockaddr));
+    RETURN_IF_ERROR(NetworkAddressPBToSockaddr(address_, krpc_use_uds_, &sockaddr));
+    if (krpc_use_uds_) {
+      // KRPC server bind to Unix domain socket if krpc_use_uds_ is true.
+      LOG(INFO) << "KRPC server bind to Unix domain socket: " << sockaddr.ToString();
+    }
   }
 
   // Call the messenger to create an AcceptorPool for us.

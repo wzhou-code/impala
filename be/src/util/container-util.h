@@ -90,7 +90,7 @@ inline bool operator!=(const TNetworkAddress& lhs, const TNetworkAddress& rhs) {
 }
 
 // NetworkAddressPB
-STATIC_ASSERT_SIZE(NetworkAddressPB, 40);
+STATIC_ASSERT_SIZE(NetworkAddressPB, 48);
 
 inline bool operator==(const NetworkAddressPB& lhs, const NetworkAddressPB& rhs) {
   return lhs.hostname() == rhs.hostname() && lhs.port() == rhs.port();

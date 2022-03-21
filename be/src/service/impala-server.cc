@@ -1279,8 +1279,8 @@ void ImpalaServer::PrepareQueryContext(TQueryCtx* query_ctx) {
       exec_env_->krpc_address(), query_ctx);
 }
 
-void ImpalaServer::PrepareQueryContext(
-    const std::string& hostname, const TNetworkAddress& krpc_addr, TQueryCtx* query_ctx) {
+void ImpalaServer::PrepareQueryContext(const std::string& hostname,
+    const NetworkAddressPB& krpc_addr, TQueryCtx* query_ctx) {
   query_ctx->__set_pid(getpid());
   int64_t now_us = UnixMicros();
   const Timezone& utc_tz = TimezoneDatabase::GetUtcTimezone();
@@ -1308,7 +1308,7 @@ void ImpalaServer::PrepareQueryContext(
   }
   query_ctx->__set_start_unix_millis(now_us / MICROS_PER_MILLI);
   query_ctx->__set_coord_hostname(hostname);
-  query_ctx->__set_coord_ip_address(krpc_addr);
+  query_ctx->__set_coord_ip_address(FromNetworkAddressPB(krpc_addr));
   TUniqueId backend_id;
   UniqueIdPBToTUniqueId(ExecEnv::GetInstance()->backend_id(), &backend_id);
   query_ctx->__set_coord_backend_id(backend_id);
@@ -2307,8 +2307,8 @@ void ImpalaServer::BuildLocalBackendDescriptorInternal(BackendDescriptorPB* be_d
   bool is_quiescing = shutting_down_.Load() != 0;
 
   *be_desc->mutable_backend_id() = exec_env_->backend_id();
-  *be_desc->mutable_address() =
-      FromTNetworkAddress(exec_env_->configured_backend_address());
+  *be_desc->mutable_address() = FromTNetworkAddress(
+      exec_env_->configured_backend_address(), exec_env_->backend_id());
   be_desc->set_ip_address(exec_env_->ip_address());
   be_desc->set_is_coordinator(FLAGS_is_coordinator);
   be_desc->set_is_executor(FLAGS_is_executor);
@@ -2320,9 +2320,9 @@ void ImpalaServer::BuildLocalBackendDescriptorInternal(BackendDescriptorPB* be_d
     be_desc->set_secure_webserver(webserver->IsSecure());
   }
 
-  const TNetworkAddress& krpc_address = exec_env_->krpc_address();
+  const NetworkAddressPB& krpc_address = exec_env_->krpc_address();
   DCHECK(IsResolvedAddress(krpc_address));
-  *be_desc->mutable_krpc_address() = FromTNetworkAddress(krpc_address);
+  *be_desc->mutable_krpc_address() = krpc_address;
 
   be_desc->set_admit_mem_limit(exec_env_->admit_mem_limit());
   be_desc->set_admission_slots(exec_env_->admission_slots());

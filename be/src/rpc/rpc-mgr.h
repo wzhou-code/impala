@@ -104,9 +104,14 @@ class RpcMgr {
 
   /// Initializes the reactor threads, and prepares for sending outbound RPC requests. All
   /// services will be started on 'address', which must be a resolved IP address.
-  Status Init(const TNetworkAddress& address) WARN_UNUSED_RESULT;
+  Status Init(const NetworkAddressPB& address) WARN_UNUSED_RESULT;
 
   bool is_inited() const { return messenger_.get() != nullptr; }
+
+  bool krpc_use_uds() const {
+    DCHECK(is_inited());
+    return krpc_use_uds_;
+  }
 
   /// Start the acceptor threads which listen on 'address_', making KRPC services
   /// available. Before this method is called, remote clients will get a 'connection
@@ -148,7 +153,7 @@ class RpcMgr {
   /// 'hostname' has to match the hostname used in the Kerberos principal of the
   /// destination host if Kerberos is enabled. 'P' must descend from kudu::rpc::Proxy.
   template <typename P>
-  Status GetProxy(const TNetworkAddress& address, const std::string& hostname,
+  Status GetProxy(const NetworkAddressPB& address, const std::string& hostname,
       std::unique_ptr<P>* proxy) WARN_UNUSED_RESULT;
 
   /// Wait until all reactor threads complete execution.
@@ -227,8 +232,11 @@ class RpcMgr {
   /// be configured to use TLS if this is set.
   const bool use_tls_;
 
-  /// The host/port the rpc services are run on.
-  TNetworkAddress address_;
+  /// The network address the krpc services are run on.
+  NetworkAddressPB address_;
+
+  // True if use Unix Domain Socket for krpc.
+  bool krpc_use_uds_ = false;
 };
 
 } // namespace impala

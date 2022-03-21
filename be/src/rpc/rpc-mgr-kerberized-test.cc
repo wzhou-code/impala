@@ -74,12 +74,14 @@ TEST_F(RpcMgrKerberizedTest, MultipleServicesTls) {
   // new gtest params to turn on TLS which needs to be a coordinated change across
   // rpc-mgr-test and thrift-server-test.
   RpcMgr tls_rpc_mgr(IsInternalTlsConfigured());
-  TNetworkAddress tls_krpc_address;
+  NetworkAddressPB tls_krpc_address;
   IpAddr ip;
   ASSERT_OK(HostnameToIpAddr(FLAGS_hostname, &ip));
 
   int32_t tls_service_port = FindUnusedEphemeralPort();
-  tls_krpc_address = MakeNetworkAddress(ip, tls_service_port);
+  UniqueIdPB backend_id;
+  UUIDToUniqueIdPB(boost::uuids::random_generator()(), &backend_id);
+  tls_krpc_address = MakeNetworkAddressPB(ip, tls_service_port, backend_id);
 
   // Enable TLS.
   ScopedSetTlsFlags s(SERVER_CERT, PRIVATE_KEY, SERVER_CERT);

@@ -25,6 +25,7 @@
 #include "util/debug-util.h"
 #include "util/network-util.h"
 #include "util/runtime-profile-counters.h"
+#include "util/uid-util.h"
 
 #include "common/names.h"
 #include "common/thread-debug-info.h"
@@ -83,9 +84,13 @@ Status QueryDriver::SetExternalPlan(
   // Update coordinator related internal addresses in the external request
   exec_request_->query_exec_request.query_ctx.__set_coord_hostname(
       ExecEnv::GetInstance()->configured_backend_address().hostname);
-  const TNetworkAddress& address = ExecEnv::GetInstance()->krpc_address();
+  const TNetworkAddress& address =
+      FromNetworkAddressPB(ExecEnv::GetInstance()->krpc_address());
   DCHECK(IsResolvedAddress(address));
   exec_request_->query_exec_request.query_ctx.__set_coord_ip_address(address);
+  TUniqueId backend_id;
+  UniqueIdPBToTUniqueId(ExecEnv::GetInstance()->backend_id(), &backend_id);
+  exec_request_->query_exec_request.query_ctx.__set_coord_backend_id(backend_id);
   // Update local_time_zone in the external request
   exec_request_->query_exec_request.query_ctx.__set_local_time_zone(
       query_ctx.local_time_zone);
