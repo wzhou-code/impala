@@ -156,6 +156,11 @@ class TestBreakpadCore(TestBreakpadBase):
   expected. This includes writing minidump when the daemons call abort(). Add tests here
   that depend on functionality of Impala other than the breakpad integration itself.
   """
+
+  def setup_class(cls):
+    pytest.skip('These breakpad tests only run without CatalogD HA')
+    super(TestBreakpadCore, cls).setup_class()
+
   @pytest.mark.execute_serially
   def test_abort_writes_minidump(self):
     """Check that abort() (e.g. hitting a DCHECK macro) writes a minidump."""

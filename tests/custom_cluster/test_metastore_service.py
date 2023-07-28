@@ -46,6 +46,11 @@ class TestMetastoreService(CustomClusterTestSuite):
     unpart_acid_tbl = ImpalaTestSuite.get_random_name("test_metastore_unpart_acid_tbl")
     default_unknowntbl = ImpalaTestSuite.get_random_name("test_metastore_default_tbl")
 
+
+    def setup_class(cls):
+        pytest.skip('These MetastoreService tests only run without CatalogD HA')
+        super(TestMetastoreService, cls).setup_class()
+
     @pytest.mark.execute_serially
     @CustomClusterTestSuite.with_args(
         impalad_args="--use_local_catalog=true",

@@ -152,7 +152,7 @@ parser.add_option("--geospatial_library", dest="geospatial_library",
                   help="Sets which implementation of geospatial libraries should be "
                   "initialized")
 parser.add_option("--enable_catalogd_ha", dest="enable_catalogd_ha",
-                  action="store_true", default=False,
+                  action="store_true", default=True,
                   help="If true, enables CatalogD HA - the cluster will be launched "
                   "with two catalogd instances as Active-Passive HA pair.")
 

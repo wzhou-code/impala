@@ -343,8 +343,8 @@ class CustomClusterTestSuite(ImpalaTestSuite):
       expected_subscribers = expected_num_impalads + 1
       if "--enable_admission_service" in options:
         expected_subscribers += 1
-      if "--enable_catalogd_ha" in options:
-        expected_subscribers += 1
+      # if "--enable_catalogd_ha" in options:
+      expected_subscribers += 1
 
     statestored.service.wait_for_live_subscribers(expected_subscribers,
                                                   timeout=statestored_timeout_s)

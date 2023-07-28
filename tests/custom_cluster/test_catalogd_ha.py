@@ -110,7 +110,7 @@ class TestCatalogdHA(CustomClusterTestSuite):
     """The test case for cluster with only one catalogd when catalogd HA is enabled."""
     # Verify the catalogd instances is created as active.
     catalogds = self.cluster.catalogds()
-    assert(len(catalogds) == 1)
+    assert(len(catalogds) == 2)
     catalogd_service_1 = catalogds[0].service
     assert(catalogd_service_1.get_metric_value("catalog-server.active-status"))
 

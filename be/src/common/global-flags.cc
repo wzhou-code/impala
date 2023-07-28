@@ -392,7 +392,7 @@ DEFINE_bool(force_catalogd_active, false, "Set to true to force this catalogd in
 // instance when designating active catalogd. The lower subscriber_id (i.e. lower network
 // address) corresponds to a higher priority.
 // This is mainly used in unit-test for predictable results.
-DEFINE_bool(use_subscriber_id_as_catalogd_priority, false, "Subscriber-id is used as "
+DEFINE_bool(use_subscriber_id_as_catalogd_priority, true, "Subscriber-id is used as "
     "priority value of catalogd instance if this is set as true. Otherwise, "
     "registration_id which is generated as random number will be used as priority value "
     "of catalogd instance.");
