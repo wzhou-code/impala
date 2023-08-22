@@ -109,6 +109,9 @@ class ExecEnv {
   /// Starts the service to subscribe to the statestore.
   Status StartStatestoreSubscriberService() WARN_UNUSED_RESULT;
 
+  /// Unregisters the statestore subscriber with the statestore.
+  Status UnregisterStatestoreSubscriber();
+
   /// Starts krpc, if needed. Start this last so everything is in place before accepting
   /// the first call.
   Status StartKrpcService() WARN_UNUSED_RESULT;

@@ -156,6 +156,10 @@ class StatestoreSubscriber {
 
   const std::string& id() const { return subscriber_id_; }
 
+  /// Unregisters this subscriber with the statestore.
+  /// Returns OK unless some error occurred, like a failure to connect.
+  Status Unregister();
+
   StatestoreServiceVersion::type GetProtocolVersion() const {
     return protocol_version_;
   }
@@ -340,8 +344,14 @@ class StatestoreSubscriber {
     /// change.
     bool IsSubscribedCatalogdChange() { return !update_catalogd_callbacks_.empty(); }
 
+    /// Unregisters this subscriber with the statestore.
+    Status Unregister();
+
     /// Returns true if the registration with statestore is completed.
     bool IsRegistered();
+
+    /// Returns true if Unregister() has been called.
+    bool IsUnregistered();
 
    private:
     /// Pointer to parent StatestoreSubscriber object
@@ -422,6 +432,10 @@ class StatestoreSubscriber {
     /// Set to true after Register(...) is successful, after which no
     /// more topics may be subscribed to.
     bool is_registered_;
+
+    /// Set to true when Unregister() is called, after which the subscriber will not try
+    /// to re-register with the statestore.
+    bool is_unregistered_;
 
     /// Protects registration_id_, protocol_version_ and statestore_id_. Must be taken
     /// after lock_ if both are to be taken together.

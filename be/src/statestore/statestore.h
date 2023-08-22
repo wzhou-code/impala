@@ -168,6 +168,10 @@ class Statestore : public CacheLineAligned {
       int64_t* active_catalogd_version,
       TCatalogRegistration* active_catalogd_registration);
 
+  /// Unregisters a subscriber with the given unique subscriber ID.
+  Status UnregisterSubscriber(const SubscriberId& subscriber_id,
+      const TUniqueId& statestore_id);
+
   /// Registers webpages for the input webserver. If metrics_only is set then only
   /// '/healthz' page is registered.
   void RegisterWebpages(Webserver* webserver, bool metrics_only);

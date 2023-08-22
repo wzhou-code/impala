@@ -247,6 +247,11 @@ Status StatestoreSubscriber::Start() {
   return statestore_->Start();
 }
 
+Status StatestoreSubscriber::Unregister() {
+  DCHECK(statestore_ != nullptr);
+  return statestore_->Unregister();
+}
+
 /// Set Register Request
 Status StatestoreSubscriber::SetRegisterRequest(
     TRegisterSubscriberRequest* request) {
@@ -317,7 +322,8 @@ StatestoreSubscriber::StatestoreStub::StatestoreStub(StatestoreSubscriber* subsc
     failure_detector_(
         new TimeoutFailureDetector(seconds(FLAGS_statestore_subscriber_timeout_seconds),
             seconds(FLAGS_statestore_subscriber_timeout_seconds / 2))),
-    is_registered_(false) {
+    is_registered_(false),
+    is_unregistered_(false) {
   std::string metrics_name_prefix = "";
   metrics_ = metrics->GetOrCreateChildGroup(
       metrics_name_prefix + "statestore-subscriber");
@@ -494,6 +500,44 @@ Status StatestoreSubscriber::StatestoreStub::Register(bool* has_active_catalogd,
   return status;
 }
 
+Status StatestoreSubscriber::StatestoreStub::Unregister() {
+  {
+    lock_guard<shared_mutex> exclusive_lock(lock_);
+    is_unregistered_ = true;
+    if (!is_registered_) return Status::OK();
+  }
+  // Send unregistering request to statestore.
+  TUnregisterSubscriberRequest unregister_request;
+  TUnregisterSubscriberResponse unregister_response;
+  unregister_request.__set_protocol_version(subscriber_->GetProtocolVersion());
+  unregister_request.__set_subscriber_id(subscriber_->id());
+  {
+    lock_guard<mutex> l(id_lock_);
+    unregister_request.__set_statestore_id(statestore_id_);
+  }
+  int attempt = 0; // Used for debug action only.
+  StatestoreServiceConn::RpcStatus rpc_status =
+      StatestoreServiceConn::DoRpcWithRetry(subscriber_->client_cache_.get(),
+          statestore_address_,
+          &StatestoreServiceClientWrapper::UnregisterSubscriber,
+          unregister_request,
+          FLAGS_statestore_subscriber_cnxn_attempts,
+          FLAGS_statestore_subscriber_cnxn_retry_interval_ms,
+          [&attempt]() {
+            return attempt++ == 0 ?
+                DebugAction(FLAGS_debug_actions, "UNREGISTER_SUBSCRIBER_FIRST_ATTEMPT") :
+                Status::OK();
+          },
+          &unregister_response);
+  RETURN_IF_ERROR(rpc_status.status);
+  Status status = Status(unregister_response.status);
+  if (status.ok()) {
+    lock_guard<shared_mutex> exclusive_lock(lock_);
+    is_registered_ = false;
+  }
+  return status;
+}
+
 Status StatestoreSubscriber::StatestoreStub::Start() {
   Status status;
   {
@@ -556,8 +600,9 @@ void StatestoreSubscriber::StatestoreStub::RecoveryModeChecker() {
   // mode and try to reconnect, followed by reregistering all subscriptions.
   while (true) {
     FailureDetector::PeerState state = failure_detector_->GetPeerState(STATESTORE_ID);
-    if (state == FailureDetector::FAILED
-        || (state == FailureDetector::UNKNOWN && !is_registered)) {
+    // Don't try to reregister with statestore if the subscriber has been unregistered.
+    if ((state == FailureDetector::FAILED ||
+        (state == FailureDetector::UNKNOWN && !is_registered)) && !IsUnregistered()) {
       // When entering recovery mode, the class-wide lock_ is taken to
       // ensure mutual exclusion with any operations in flight.
       lock_guard<shared_mutex> exclusive_lock(lock_);
@@ -826,6 +871,11 @@ bool StatestoreSubscriber::StatestoreStub::IsInPostRecoveryGracePeriod() const {
 bool StatestoreSubscriber::StatestoreStub::IsRegistered() {
   lock_guard<shared_mutex> exclusive_lock(lock_);
   return is_registered_;
+}
+
+bool StatestoreSubscriber::StatestoreStub::IsUnregistered() {
+  lock_guard<shared_mutex> exclusive_lock(lock_);
+  return is_unregistered_;
 }
 
 }

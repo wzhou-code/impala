@@ -3372,6 +3372,12 @@ Status ImpalaServer::StartShutdown(
     curr_deadline = shutdown_deadline_.Load();
   }
 
+  // Unregister executor with the statestore so that the executor will be removed from
+  // the cluster immediately.
+  if (shutting_down_.Load() == 0 && IsExecutor() && !IsCoordinator()) {
+    discard_result(exec_env_->UnregisterStatestoreSubscriber());
+  }
+
   // Dump the data cache before shutdown.
   discard_result(ExecEnv::GetInstance()->disk_io_mgr()->DumpDataCache());
 

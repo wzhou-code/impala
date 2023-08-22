@@ -259,6 +259,23 @@ struct TRegisterSubscriberResponse {
   6: optional i64 catalogd_version;
 }
 
+struct TUnregisterSubscriberRequest {
+  // Protocol version of the subscriber
+  1: required StatestoreServiceVersion protocol_version =
+      StatestoreServiceVersion.V2
+
+  // Unique, human-readable identifier for this subscriber
+  2: required string subscriber_id;
+
+  // Unique identifier for the statestore instance.
+  3: optional Types.TUniqueId statestore_id;
+}
+
+struct TUnregisterSubscriberResponse {
+  // Whether the call was executed correctly at the application level
+  1: required Status.TStatus status;
+}
+
 struct TGetProtocolVersionRequest {
   // Protocol version of the subscriber
   1: required StatestoreServiceVersion protocol_version =
@@ -280,6 +297,10 @@ service StatestoreService {
   // Register a single subscriber. Note that after a subscriber is registered, no new
   // topics may be added.
   TRegisterSubscriberResponse RegisterSubscriber(1: TRegisterSubscriberRequest params);
+
+  // Unregister a single subscriber.
+  TUnregisterSubscriberResponse UnregisterSubscriber(
+      1: TUnregisterSubscriberRequest params);
 
   // Get protocol version of the statestore
   TGetProtocolVersionResponse GetProtocolVersion(1: TGetProtocolVersionRequest params);

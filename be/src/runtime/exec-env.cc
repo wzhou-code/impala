@@ -527,6 +527,18 @@ Status ExecEnv::StartStatestoreSubscriberService() {
   return Status::OK();
 }
 
+Status ExecEnv::UnregisterStatestoreSubscriber() {
+  if (statestore_subscriber_.get() != nullptr && statestore_subscriber_->IsRegistered()) {
+    LOG(INFO) << "Unregister statestore subscriber";
+    Status status = statestore_subscriber_->Unregister();
+    if (!status.ok()) {
+      LOG(ERROR) << "Failed to Unregister statestore subscriber: " << status.GetDetail();
+    }
+    return status;
+  }
+  return Status::OK();
+}
+
 Status ExecEnv::StartKrpcService() {
   LOG(INFO) << "Starting KRPC service";
   RETURN_IF_ERROR(rpc_mgr_->StartServices());

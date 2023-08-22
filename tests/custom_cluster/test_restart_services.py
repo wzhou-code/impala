@@ -919,6 +919,7 @@ class TestGracefulShutdown(CustomClusterTestSuite, HS2TestSuite):
           --hostname={hostname}".format(grace_period=IDLE_SHUTDOWN_GRACE_PERIOD_S,
             hostname=socket.gethostname()), cluster_size=1)
   def test_graceful_shutdown_script(self):
+    # TODO wzhou
     impalad = psutil.Process(self.cluster.impalads[0].get_pid())
     script = os.path.join(os.environ['IMPALA_HOME'], 'bin',
                           'graceful_shutdown_backends.sh')

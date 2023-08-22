@@ -48,6 +48,14 @@ class StatestoreServiceClientWrapper : public StatestoreServiceClient {
     recv_RegisterSubscriber(_return);
   }
 
+  void UnregisterSubscriber(TUnregisterSubscriberResponse& _return,
+      const TUnregisterSubscriberRequest& params, bool* send_done) {
+    DCHECK(!*send_done);
+    send_UnregisterSubscriber(params);
+    *send_done = true;
+    recv_UnregisterSubscriber(_return);
+  }
+
   void GetProtocolVersion(TGetProtocolVersionResponse& _return,
       const TGetProtocolVersionRequest& params, bool* send_done) {
     DCHECK(!*send_done);

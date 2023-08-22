@@ -239,6 +239,22 @@ class StatestoreThriftIf : public StatestoreServiceIf {
     }
   }
 
+  virtual void UnregisterSubscriber(TUnregisterSubscriberResponse& response,
+      const TUnregisterSubscriberRequest& params) {
+    if (params.protocol_version < statestore_->GetProtocolVersion()) {
+      // Refuse old version of subscribers
+      Status status = Status(TErrorCode::STATESTORE_INCOMPATIBLE_PROTOCOL,
+          params.subscriber_id, params.protocol_version + 1,
+          statestore_->GetProtocolVersion() + 1);
+      status.ToThrift(&response.status);
+      return;
+    }
+    Status status =
+        statestore_->UnregisterSubscriber(params.subscriber_id, params.statestore_id);
+    status.ToThrift(&response.status);
+    return;
+  }
+
   virtual void GetProtocolVersion(TGetProtocolVersionResponse& response,
       const TGetProtocolVersionRequest& params) {
     LOG(INFO) << "Subscriber protocol version: " << params.protocol_version;
@@ -811,6 +827,21 @@ Status Statestore::RegisterSubscriber(const SubscriberId& subscriber_id,
             has_active_catalogd, active_catalogd_version);
   }
 
+  return Status::OK();
+}
+
+Status Statestore::UnregisterSubscriber(const SubscriberId& subscriber_id,
+    const TUniqueId& statestore_id) {
+  if (statestore_id_ != statestore_id) {
+    return Status(Substitute("Unexpected statestore ID: $0, is expecting $1",
+        PrintId(statestore_id), PrintId(statestore_id_)));
+  }
+  lock_guard<mutex> l(subscribers_lock_);
+  SubscriberMap::iterator subscriber_it = subscribers_.find(subscriber_id);
+  if (subscriber_it != subscribers_.end()) {
+    shared_ptr<Subscriber> subscriber = subscriber_it->second;
+    UnregisterSubscriber(subscriber.get());
+  }
   return Status::OK();
 }
 
