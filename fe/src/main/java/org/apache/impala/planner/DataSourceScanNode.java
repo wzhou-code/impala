@@ -17,6 +17,7 @@
 
 package org.apache.impala.planner;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -35,6 +36,7 @@ import org.apache.impala.analysis.StringLiteral;
 import org.apache.impala.analysis.TupleDescriptor;
 import org.apache.impala.catalog.DataSource;
 import org.apache.impala.catalog.FeDataSourceTable;
+import org.apache.impala.common.FileSystemUtil;
 import org.apache.impala.common.ImpalaException;
 import org.apache.impala.common.InternalException;
 import org.apache.impala.extdatasource.ExternalDataSourceExecutor;
@@ -163,16 +165,14 @@ public class DataSourceScanNode extends ScanNode {
       }
     }
 
-    String hdfsLocation = table_.getDataSource().getHdfs_location();
-    TCacheJarResult cacheResult = FeSupport.CacheJar(hdfsLocation);
-    TStatus cacheJarStatus = cacheResult.getStatus();
-    if (cacheJarStatus.getStatus_code() != TErrorCode.OK) {
+    String dsLocation = table_.getDataSource().getHdfs_location();
+    String localPath;
+    try {
+      localPath = FileSystemUtil.copyFileFromUriToLocal(dsLocation);
+    } catch (IOException e) {
       throw new InternalException(String.format(
-          "Unable to cache data source library at location '%s'. Check that the file " +
-          "exists and is readable. Message: %s",
-          hdfsLocation, Joiner.on("\n").join(cacheJarStatus.getError_msgs())));
+          "Unable to fetch data source jar from location '%s'.", dsLocation));
     }
-    String localPath = cacheResult.getLocal_path();
     String className = table_.getDataSource().getClass_name();
     String apiVersion = table_.getDataSource().getApi_version();
     TPrepareResult prepareResult;

@@ -20,9 +20,8 @@ from __future__ import absolute_import, division, print_function
 import re
 
 from tests.common.impala_test_suite import ImpalaTestSuite
-from tests.common.skip import SkipIf, SkipIfDockerizedCluster
+from tests.common.skip import SkipIfDockerizedCluster
 from tests.common.test_dimensions import create_uncompressed_text_dimension
-from tests.util.filesystem_utils import FILESYSTEM_PREFIX
 
 
 class TestExtDataSources(ImpalaTestSuite):
@@ -62,14 +61,12 @@ class TestExtDataSources(ImpalaTestSuite):
         properties[fields[1].rstrip()] = fields[2].rstrip()
     return properties
 
-  @SkipIf.not_hdfs
   def test_verify_jdbc_table_properties(self, vector):
     jdbc_tbl_name = "functional.alltypes_jdbc_datasource"
     properties = self._get_tbl_properties(jdbc_tbl_name)
     # Verify data source related table properties
     assert properties['__IMPALA_DATA_SOURCE_NAME'] == 'jdbcdatasource'
-    expected_location =\
-        "{0}/test-warehouse/data-sources/jdbc-data-source.jar".format(FILESYSTEM_PREFIX)
+    expected_location = "/test-warehouse/data-sources/jdbc-data-source.jar"
     assert re.search(expected_location, properties['__IMPALA_DATA_SOURCE_LOCATION'])
     assert properties['__IMPALA_DATA_SOURCE_CLASS'] == \
         'org.apache.impala.extdatasource.jdbc.JdbcDataSource'
@@ -88,6 +85,5 @@ class TestExtDataSources(ImpalaTestSuite):
   # configured to accept only local connection. Have to skip this test for dockerised
   # cluster since Postgres server is not accessible from impalad.
   @SkipIfDockerizedCluster.internal_hostname
-  @SkipIf.not_hdfs
   def test_jdbc_data_source(self, vector, unique_database):
     self.run_test_case('QueryTest/jdbc-data-source', vector, use_db=unique_database)
