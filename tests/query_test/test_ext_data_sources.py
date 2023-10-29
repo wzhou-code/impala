@@ -87,7 +87,7 @@ class TestExtDataSources(ImpalaTestSuite):
   # dockerised environment, the Postgres server is running on a different host. It is
   # configured to accept only local connection. Have to skip this test for dockerised
   # cluster since Postgres server is not accessible from impalad.
-  @SkipIfDockerizedCluster.internal_hostname
+  # @SkipIfDockerizedCluster.internal_hostname
   @SkipIf.not_hdfs
   def test_jdbc_data_source(self, vector, unique_database):
     self.run_test_case('QueryTest/jdbc-data-source', vector, use_db=unique_database)

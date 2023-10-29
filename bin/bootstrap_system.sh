@@ -386,7 +386,17 @@ ubuntu sudo service postgresql stop
 # widely.
 ubuntu sudo sed -ri 's/local +all +all +peer/local all all trust/g' \
   /etc/postgresql/*/main/pg_hba.conf
+# Allow connection from same subnet
+ubuntu sudo sed -ri 's/host +all +all +127.0.0.1\/32/host all all samenet/g' \
+  /etc/postgresql/*/main/pg_hba.conf
+ubuntu sudo sed -ri "s/#listen_addresses = 'localhost'/listen_addresses = '*'/g" \
+  /etc/postgresql/*/main/postgresql.conf
+ubuntu sudo cat /etc/postgresql/*/main/pg_hba.conf
+ubuntu sudo cat /etc/postgresql/*/main/postgresql.conf
 redhat sudo sed -ri 's/local +all +all +(ident|peer)/local all all trust/g' \
+  /var/lib/pgsql/data/pg_hba.conf
+# Allow connection from same subnet
+redhat sudo sed -ri 's/host +all +all +127.0.0.1\/32/host all all samenet/g' \
   /var/lib/pgsql/data/pg_hba.conf
 # Accept md5 passwords from localhost
 redhat sudo sed -i -e 's,\(host.*\)ident,\1md5,' /var/lib/pgsql/data/pg_hba.conf

@@ -29,6 +29,8 @@ EXT_DATA_SOURCE_SRC_PATH=${IMPALA_HOME}/java/ext-data-source
 EXT_DATA_SOURCES_HDFS_PATH=${FILESYSTEM_PREFIX}/test-warehouse/data-sources
 JDBC_DRIVERS_HDFS_PATH=${EXT_DATA_SOURCES_HDFS_PATH}/jdbc-drivers
 
+netstat -nlt
+
 hadoop fs -mkdir -p ${EXT_DATA_SOURCES_HDFS_PATH}
 hadoop fs -mkdir -p ${JDBC_DRIVERS_HDFS_PATH}
 
