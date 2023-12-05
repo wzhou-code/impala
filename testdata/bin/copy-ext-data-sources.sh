@@ -54,3 +54,15 @@ hadoop fs -put -f \
 
 echo "Copied" ${IMPALA_HOME}/fe/target/dependency/postgresql-*.jar \
   "into HDFS" ${JDBC_DRIVERS_HDFS_PATH}
+
+# Delete hivuser if it already exists in the jceks file
+if [ $(hadoop credential list -provider jceks://${FILESYSTEM_PREFIX}/test-warehouse/\
+data-sources/test.jceks | grep -c 'hiveuser') -eq 1 ]; then
+  hadoop credential delete hiveuser -f -provider jceks://${FILESYSTEM_PREFIX}/\
+test-warehouse/data-sources/test.jceks > /dev/null 2>&1
+fi
+
+# Store password in a Java keystore file on HDFS
+hadoop credential create hiveuser -provider \
+  jceks://${FILESYSTEM_PREFIX}/test-warehouse/data-sources/test.jceks -v password\
+  > /dev/null 2>&1

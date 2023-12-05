@@ -37,6 +37,10 @@ public enum JdbcStorageConfig {
   DBCP_USERNAME("dbcp.username", false),
   // Password of the user.
   DBCP_PASSWORD("dbcp.password", false),
+  // key of the keystore.
+  DBCP_PASSWORD_KEY("dbcp.password.key", false),
+  // keystore of the user.
+  DBCP_PASSWORD_KEYSTORE("dbcp.password.keystore", false),
   // Number of rows to fetch in a batch.
   JDBC_FETCH_SIZE("jdbc.fetch.size", false),
   // SQL query which specify how to get data from external database.
@@ -49,7 +53,6 @@ public enum JdbcStorageConfig {
 
   private final String propertyName;
   private boolean required = false;
-
 
   JdbcStorageConfig(String propertyName, boolean required) {
     this.propertyName = propertyName;
