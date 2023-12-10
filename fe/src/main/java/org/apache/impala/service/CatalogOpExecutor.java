@@ -68,6 +68,7 @@ import org.apache.hadoop.hive.metastore.api.ColumnStatistics;
 import org.apache.hadoop.hive.metastore.api.ColumnStatisticsData;
 import org.apache.hadoop.hive.metastore.api.ColumnStatisticsDesc;
 import org.apache.hadoop.hive.metastore.api.ColumnStatisticsObj;
+import org.apache.hadoop.hive.metastore.api.DataConnector;
 import org.apache.hadoop.hive.metastore.api.DataOperationType;
 import org.apache.hadoop.hive.metastore.api.Database;
 import org.apache.hadoop.hive.metastore.api.FieldSchema;
@@ -2461,9 +2462,17 @@ public class CatalogOpExecutor {
 
   private void createDataSource(TCreateDataSourceParams params, TDdlExecResponse resp)
       throws ImpalaException {
-    if (LOG.isTraceEnabled()) { LOG.trace("Adding DATA SOURCE: " + params.toString()); }
+    Preconditions.checkNotNull(params);
+    if (LOG.isTraceEnabled()) {
+      LOG.trace("Adding DATA SOURCE: " + params.toString());
+    }
     DataSource dataSource = DataSource.fromThrift(params.getData_source());
-    DataSource existingDataSource = catalog_.getDataSource(dataSource.getName());
+    Preconditions.checkNotNull(dataSource);
+    String dataSrcName = dataSource.getName();
+    Preconditions.checkState(dataSrcName != null && !dataSrcName.isEmpty(),
+        "Null or empty DataSource name passed as argument to " +
+        "CatalogOpExecutor.createDataSource");
+    DataSource existingDataSource = catalog_.getDataSource(dataSrcName);
     if (existingDataSource != null) {
       if (!params.if_not_exists) {
         throw new ImpalaRuntimeException("Data source " + dataSource.getName() +
@@ -2474,6 +2483,9 @@ public class CatalogOpExecutor {
       resp.result.setVersion(existingDataSource.getCatalogVersion());
       return;
     }
+    // Create DataConnector object in HMS.
+    addDataConnectorToHms(dataSource.toDataConnector(), params.if_not_exists);
+    // Add DataConnector object to memory cache,
     catalog_.addDataSource(dataSource);
     resp.result.addToUpdated_catalog_objects(dataSource.toTCatalogObject());
     resp.result.setVersion(dataSource.getCatalogVersion());
@@ -2483,7 +2495,11 @@ public class CatalogOpExecutor {
   private void dropDataSource(TDropDataSourceParams params, TDdlExecResponse resp)
       throws ImpalaException {
     if (LOG.isTraceEnabled()) LOG.trace("Drop DATA SOURCE: " + params.toString());
-    DataSource dataSource = catalog_.removeDataSource(params.getData_source());
+    String dataSrcName = params.getData_source();
+    Preconditions.checkState(dataSrcName != null && !dataSrcName.isEmpty(),
+        "Null or empty DataSource name passed as argument to " +
+        "CatalogOpExecutor.dropDataSource");
+    DataSource dataSource = catalog_.removeDataSource(dataSrcName);
     if (dataSource == null) {
       if (!params.if_exists) {
         throw new ImpalaRuntimeException("Data source " + params.getData_source() +
@@ -2493,6 +2509,9 @@ public class CatalogOpExecutor {
       // No data source was removed.
       resp.result.setVersion(catalog_.getCatalogVersion());
       return;
+    } else {
+      // Drop DataConnector object from HMS.
+      dropDataConnectorFromHms(dataSrcName, /* ifExists */ false);
     }
     resp.result.addToRemoved_catalog_objects(dataSource.toTCatalogObject());
     resp.result.setVersion(dataSource.getCatalogVersion());
@@ -6192,6 +6211,65 @@ public class CatalogOpExecutor {
       LOG.error("Error executing dropFunction() metastore call: " + fn, e);
       throw new ImpalaRuntimeException(
           String.format(HMS_RPC_ERROR_FORMAT_STR, "dropFunction"), e);
+    }
+    return true;
+  }
+
+  /**
+   * Creates a new DataConnector in the Hive metastore. Returns true if successful
+   * and false if the call fails and ifNotExists is true.
+   */
+  private boolean addDataConnectorToHms(
+      org.apache.hadoop.hive.metastore.api.DataConnector connector,
+      boolean ifNotExists) throws ImpalaRuntimeException{
+    Preconditions.checkNotNull(connector);
+    getMetastoreDdlLock().lock();
+    try {
+      try (MetaStoreClient msClient = catalog_.getMetaStoreClient()) {
+        msClient.getHiveClient().createDataConnector(connector);
+      } catch(AlreadyExistsException e) {
+        if (!ifNotExists) {
+          throw new ImpalaRuntimeException(
+              String.format(HMS_RPC_ERROR_FORMAT_STR, "createDataConnector"), e);
+        }
+        return false;
+      } catch (TException e) {
+        LOG.error("Error executing createDataConnector() metastore call: " +
+            connector.getName(), e);
+        throw new ImpalaRuntimeException(
+            String.format(HMS_RPC_ERROR_FORMAT_STR, "createDataConnector"), e);
+      }
+    } finally {
+      getMetastoreDdlLock().unlock();
+    }
+    return true;
+  }
+
+  /**
+   * Drops the DataConnector with given name from Hive metastore. Returns true if
+   * successful and false if the function does not exist and ifExists is true.
+   */
+  private boolean dropDataConnectorFromHms(String connectorName, boolean ifExists)
+      throws ImpalaRuntimeException {
+    getMetastoreDdlLock().lock();
+    try {
+      try (MetaStoreClient msClient = catalog_.getMetaStoreClient()) {
+        try {
+          msClient.getHiveClient().dropDataConnector(connectorName, !ifExists, false);
+        } catch (NoSuchObjectException e) {
+          if (!ifExists) {
+            throw new ImpalaRuntimeException(
+                String.format(HMS_RPC_ERROR_FORMAT_STR, "dropDataConnector"), e);
+          }
+          return false;
+        } catch (TException e) {
+          LOG.error("Error executing dropDataConnector HMS call: " + connectorName, e);
+          throw new ImpalaRuntimeException(
+              String.format(HMS_RPC_ERROR_FORMAT_STR, "dropDataDataConnector"), e);
+        }
+      }
+    } finally {
+      getMetastoreDdlLock().unlock();
     }
     return true;
   }

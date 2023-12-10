@@ -17,6 +17,7 @@
 
 package org.apache.impala.catalog;
 
+import org.apache.hadoop.hive.metastore.api.DataConnector;
 import org.apache.impala.thrift.TCatalogObject;
 import org.apache.impala.thrift.TCatalogObjectType;
 import org.apache.impala.thrift.TDataSource;
@@ -27,6 +28,13 @@ import com.google.common.base.MoreObjects;
  * information needed to locate and load the data source.
  */
 public class DataSource extends CatalogObjectImpl implements FeDataSource {
+  // Impala DataSource object is saved in HMS as DataConnector with type
+  // as 'impalaDataSource'
+  public static final String HMS_DATA_CONNECTOR_TYPE = "impalaDataSource";
+  public static final String HMS_DATA_CONNECTOR_DESC = "Impala DataSource Object";
+  public static final String HMS_DATA_CONNECTOR_PARAM_KEY_CLASS_NAME = "className";
+  public static final String HMS_DATA_CONNECTOR_PARAM_KEY_API_VERSION = "apiVersion";
+
   private final String dataSrcName_;
   private final String className_;
   private final String apiVersionString_;
@@ -62,6 +70,36 @@ public class DataSource extends CatalogObjectImpl implements FeDataSource {
 
   public TDataSource toThrift() {
     return new TDataSource(getName(), location_, className_, apiVersionString_);
+  }
+
+  public DataConnector toDataConnector() {
+    DataConnector connector =
+        new DataConnector(dataSrcName_, HMS_DATA_CONNECTOR_TYPE, location_);
+    connector.setDescription(HMS_DATA_CONNECTOR_DESC);
+    connector.putToParameters(HMS_DATA_CONNECTOR_PARAM_KEY_CLASS_NAME, className_);
+    connector.putToParameters(
+        HMS_DATA_CONNECTOR_PARAM_KEY_API_VERSION, apiVersionString_);
+    return connector;
+  }
+
+  public static DataSource fromDataConnector(DataConnector connector) {
+    if (!connector.isSetName() || !connector.isSetType() || !connector.isSetUrl()
+        || !connector.isSetDescription() || connector.getParametersSize() == 0
+        || !connector.getType().equalsIgnoreCase(HMS_DATA_CONNECTOR_TYPE)) {
+      return null;
+    }
+    String name = connector.getName();
+    String location = connector.getUrl();
+    String className =
+        connector.getParameters().get(HMS_DATA_CONNECTOR_PARAM_KEY_CLASS_NAME);
+    String apiVersion =
+        connector.getParameters().get(HMS_DATA_CONNECTOR_PARAM_KEY_API_VERSION);
+    if (!name.isEmpty() && !location.isEmpty() && className != null &&
+        !className.isEmpty() && apiVersion != null && !apiVersion.isEmpty()) {
+      return new DataSource(name, location, className, apiVersion);
+    } else {
+      return null;
+    }
   }
 
   public String debugString() {
