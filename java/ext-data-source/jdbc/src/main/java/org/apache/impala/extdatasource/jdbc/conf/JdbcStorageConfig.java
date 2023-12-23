@@ -37,9 +37,11 @@ public enum JdbcStorageConfig {
   DBCP_USERNAME("dbcp.username", false),
   // Password of the user.
   DBCP_PASSWORD("dbcp.password", false),
-  // key of the keystore.
+  // Key of the keystore.
   DBCP_PASSWORD_KEY("dbcp.password.key", false),
-  // keystore of the user.
+  // Keystore URI in the format like jceks://hdfs/test-warehouse/data-sources/test.jceks.
+  // In Impala unit-test environment, URI scheme of filesystem is set as following:
+  // "hdfs" for HDFS, "s3a" for S3, and "ofs" for Ozone.
   DBCP_PASSWORD_KEYSTORE("dbcp.password.keystore", false),
   // Number of rows to fetch in a batch.
   JDBC_FETCH_SIZE("jdbc.fetch.size", false),
