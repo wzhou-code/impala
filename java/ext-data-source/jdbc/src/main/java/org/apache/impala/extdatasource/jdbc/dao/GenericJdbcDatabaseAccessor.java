@@ -173,6 +173,11 @@ public class GenericJdbcDatabaseAccessor implements DatabaseAccessor {
     return name;
   }
 
+  @Override
+  public String getOptions(String configOptions) {
+    return null;
+  }
+
   /**
    * Uses generic JDBC escape functions to add a limit and offset clause to a query
    * string
@@ -295,6 +300,12 @@ public class GenericJdbcDatabaseAccessor implements DatabaseAccessor {
     if (!Strings.isNullOrEmpty(jdbcAuth)) {
       jdbcUrl += ";" + jdbcAuth;
     }
+    String queryOptions =
+        getOptions(conf.get(JdbcStorageConfig.JDBC_OPTIONS.getPropertyName()));
+    if (!Strings.isNullOrEmpty(queryOptions)) {
+      jdbcUrl += ";" + queryOptions;
+    }
+    LOG.trace("JDBC URL: {}", jdbcUrl);
     dbProperties.put("url", jdbcUrl);
     dbProperties.put("driverClassName",
         conf.get(JdbcStorageConfig.JDBC_DRIVER_CLASS.getPropertyName()));

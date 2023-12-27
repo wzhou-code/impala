@@ -45,6 +45,11 @@ public enum JdbcStorageConfig {
   DBCP_PASSWORD_KEYSTORE("dbcp.password.keystore", false),
   // Number of rows to fetch in a batch.
   JDBC_FETCH_SIZE("jdbc.fetch.size", false),
+  // Query options applied to database engine.
+  // Query options are specified as comma-delimited key=value string. For example,
+  // "jdbc.options":"MEM_LIMIT=1000000000, MAX_ERRORS=10000".
+  // A comma in string type of value must be encoded as %2C.
+  JDBC_OPTIONS("jdbc.options", false),
   // SQL query which specify how to get data from external database.
   // User need to specify either “table” or “query” in the create table statement.
   QUERY("query", false),

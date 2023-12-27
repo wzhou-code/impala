@@ -17,6 +17,13 @@
 
 package org.apache.impala.extdatasource.jdbc.dao;
 
+import java.util.ArrayList;
+import java.util.List;
+
+import com.google.common.base.Splitter;
+import com.google.common.base.Strings;
+import com.google.common.collect.Lists;
+
 /**
  * Impala specific data accessor. This is needed because Impala JDBC drivers do not
  * support generic LIMIT and OFFSET escape functions
@@ -36,7 +43,6 @@ public class ImpalaDatabaseAccessor extends GenericJdbcDatabaseAccessor {
     }
   }
 
-
   @Override
   protected String addLimitToQuery(String sql, int limit) {
     if (limit != -1) {
@@ -46,4 +52,25 @@ public class ImpalaDatabaseAccessor extends GenericJdbcDatabaseAccessor {
     }
   }
 
+  @Override
+  public String getOptions(String configOptions) {
+    if (Strings.isNullOrEmpty(configOptions)) return null;
+    // Extract valid query options.
+    List<String> options = Lists.newArrayList(Splitter.on(',').trimResults()
+        .omitEmptyStrings().split(configOptions.toLowerCase()));
+    List<String> invalidOptions = new ArrayList();
+    for (String option : options) {
+      if (!option.contains("=")) {
+        invalidOptions.add(option);
+      }
+    }
+    if (!invalidOptions.isEmpty()) {
+      options.removeAll(invalidOptions);
+    }
+    if (!options.isEmpty()) {
+      return String.join(";", options);
+    } else {
+      return null;
+    }
+  }
 }
