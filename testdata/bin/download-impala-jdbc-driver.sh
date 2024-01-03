@@ -49,6 +49,12 @@ wget "https://downloads.cloudera.com/connectors/${SIMBA_DRIVER_ZIP_FILENAME}.zip
 
 # Use Python modules to unzip zip file since 'unzip' command is not available in some
 # testing environments.
+if command -v unzip; then
+  echo "unzip command is available"
+  unzip ${SIMBA_DRIVER_ZIP_FILENAME}.zip
+  unzip ${SIMBA_DRIVER_ZIP_FILENAME}/${INNER_SIMBA_DRIVER_ZIP_FILENAME}.zip
+else
+  echo "unzip command is not found, use Python modules to unzip zip file"
 cat > unzip.py <<__EOT__
 import sys
 from zipfile import PyZipFile
@@ -56,9 +62,10 @@ pzf = PyZipFile(sys.argv[1])
 pzf.extractall()
 __EOT__
 
-# Extract driver jar file from zip file.
-python ./unzip.py ${SIMBA_DRIVER_ZIP_FILENAME}.zip
-python ./unzip.py ${SIMBA_DRIVER_ZIP_FILENAME}/${INNER_SIMBA_DRIVER_ZIP_FILENAME}.zip
+  # Extract driver jar file from zip file.
+  python ./unzip.py ${SIMBA_DRIVER_ZIP_FILENAME}.zip
+  python ./unzip.py ${SIMBA_DRIVER_ZIP_FILENAME}/${INNER_SIMBA_DRIVER_ZIP_FILENAME}.zip
+fi
 
 # Copy driver jar file to Hadoop FS.
 hadoop fs -put -f /tmp/impala_jdbc_driver/${SIMBA_DRIVER_JAR_FILENAME} \
