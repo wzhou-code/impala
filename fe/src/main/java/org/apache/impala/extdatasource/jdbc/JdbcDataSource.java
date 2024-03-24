@@ -189,6 +189,9 @@ public class JdbcDataSource implements ExternalDataSource {
           iterator_.next(schema_.getCols(), cols);
           ++numRows;
         }
+      } catch (UnsupportedOperationException e) {
+        return new TGetNextResult(
+            new TStatus(TErrorCode.INTERNAL_ERROR, Lists.newArrayList(e.getMessage())));
       } catch (Exception e) {
         hasNext = false;
       }
