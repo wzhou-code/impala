@@ -139,6 +139,10 @@ struct TOpenParams {
 
   // The query limit, if specified.
   8: optional i64 limit
+
+  // Indicate if external JDBC table handler should clean DBCP DataSource object from
+  // cache when its reference count equals 0.
+  9: optional bool clean_dbcp_ds_cache
 }
 
 // Returned by open().

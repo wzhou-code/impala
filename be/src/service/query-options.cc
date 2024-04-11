@@ -1285,6 +1285,10 @@ Status impala::SetQueryOption(const string& key, const string& value,
         query_options->__set_slot_count_strategy(enum_type);
         break;
       }
+      case TImpalaQueryOptions::CLEAN_DBCP_DS_CACHE: {
+        query_options->__set_clean_dbcp_ds_cache(IsTrue(value));
+        break;
+      }
       default:
         if (IsRemovedQueryOption(key)) {
           LOG(WARNING) << "Ignoring attempt to set removed query option '" << key << "'";
