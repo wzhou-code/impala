@@ -24,12 +24,18 @@ import requests
 from beeswaxd.BeeswaxService import QueryState
 from tests.common.custom_cluster_test_suite import CustomClusterTestSuite
 from tests.common.environ import build_flavor_timeout
-from tests.util.filesystem_utils import get_fs_path
+from tests.util.filesystem_utils import IS_S3, get_fs_path
 from time import sleep
 
 LOG = logging.getLogger('catalogd_ha_test')
 DEFAULT_STATESTORE_SERVICE_PORT = 24000
 DEFAULT_CATALOG_SERVICE_PORT = 26000
+SLOW_BUILD_SYNC_DDL_DELAY_MS = 15000
+SYNC_DDL_DELAY_MS = build_flavor_timeout(
+    5000, slow_build_timeout=SLOW_BUILD_SYNC_DDL_DELAY_MS)
+# s3 can behave as a slow build.
+if IS_S3:
+  SYNC_DDL_DELAY_MS = SLOW_BUILD_SYNC_DDL_DELAY_MS
 
 
 class TestCatalogdHA(CustomClusterTestSuite):
@@ -438,7 +444,8 @@ class TestCatalogdHA(CustomClusterTestSuite):
 
   @CustomClusterTestSuite.with_args(
     statestored_args="--use_subscriber_id_as_catalogd_priority=true",
-    catalogd_args="--debug_actions='catalogd_wait_sync_ddl_version_delay:SLEEP@5000'",
+    catalogd_args="--debug_actions='catalogd_wait_sync_ddl_version_delay:SLEEP@{0}'"
+        .format(SYNC_DDL_DELAY_MS),
     start_args="--enable_catalogd_ha")
   def test_catalogd_failover_with_sync_ddl(self, unique_database):
     """Tests for Catalog Service force fail-over when running DDL with SYNC_DDL
