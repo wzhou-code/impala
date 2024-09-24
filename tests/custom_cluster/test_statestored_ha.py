@@ -37,6 +37,17 @@ import StatestoreService.StatestoreService as Statestore
 
 LOG = logging.getLogger('statestored_ha_test')
 
+# Check whether the Impala under test in UBSAN build. Increase TCP timeout for Thrift
+# RPC sent from statestored to its subscribers in UBSAN build. This avoids failures
+# like IMPALA-13399 where statestored failed to send heartbeats to subscribers due to
+# receiving timeout.
+# Default TCP timeouts are set as 3 seconds for Thrift RPC sent from statestored.
+# See default values of statestore_heartbeat_tcp_timeout_seconds and
+# statestore_update_statestore_tcp_timeout_seconds in be/src/statestore/statestore.cc
+TRPC_TCP_TIMEOUT_S = 3
+if ImpalaTestClusterProperties.get_instance().is_ubsan():
+  TRPC_TCP_TIMEOUT_S = 10
+
 
 class TestStatestoredHA(CustomClusterTestSuite):
   """A simple wrapper class to launch a cluster with Statestored HA enabled.
@@ -364,7 +375,10 @@ class TestStatestoredHA(CustomClusterTestSuite):
     statestored_args="--use_network_address_as_statestore_priority=true "
                      "--statestore_ha_heartbeat_monitoring_frequency_ms=50 "
                      "--heartbeat_monitoring_frequency_ms=6000 "
-                     "--statestore_peer_timeout_seconds=2",
+                     "--statestore_peer_timeout_seconds=2 "
+                     "--statestore_heartbeat_tcp_timeout_seconds={timeout_s} "
+                     "--statestore_update_statestore_tcp_timeout_seconds={timeout_s}"
+                     .format(timeout_s=TRPC_TCP_TIMEOUT_S),
     impalad_args="--statestore_subscriber_timeout_seconds=2",
     catalogd_args="--statestore_subscriber_timeout_seconds=2",
     start_args="--enable_statestored_ha")
@@ -378,7 +392,10 @@ class TestStatestoredHA(CustomClusterTestSuite):
                      "--statestore_ha_heartbeat_monitoring_frequency_ms=50 "
                      "--heartbeat_monitoring_frequency_ms=6000 "
                      "--statestore_peer_timeout_seconds=2 "
-                     "--debug_actions=SEND_UPDATE_STATESTORED_RPC_FIRST_ATTEMPT:FAIL@1.0",
+                     "--debug_actions=SEND_UPDATE_STATESTORED_RPC_FIRST_ATTEMPT:FAIL@1.0 "
+                     "--statestore_heartbeat_tcp_timeout_seconds={timeout_s} "
+                     "--statestore_update_statestore_tcp_timeout_seconds={timeout_s}"
+                     .format(timeout_s=TRPC_TCP_TIMEOUT_S),
     impalad_args="--statestore_subscriber_timeout_seconds=2",
     catalogd_args="--statestore_subscriber_timeout_seconds=2",
     start_args="--enable_statestored_ha")
@@ -392,7 +409,10 @@ class TestStatestoredHA(CustomClusterTestSuite):
                      "--statestore_ha_heartbeat_monitoring_frequency_ms=50 "
                      "--heartbeat_monitoring_frequency_ms=6000 "
                      "--statestore_peer_timeout_seconds=2 "
-                     "--use_subscriber_id_as_catalogd_priority=true",
+                     "--use_subscriber_id_as_catalogd_priority=true "
+                     "--statestore_heartbeat_tcp_timeout_seconds={timeout_s} "
+                     "--statestore_update_statestore_tcp_timeout_seconds={timeout_s}"
+                     .format(timeout_s=TRPC_TCP_TIMEOUT_S),
     impalad_args="--statestore_subscriber_timeout_seconds=2",
     catalogd_args="--statestore_subscriber_timeout_seconds=2",
     start_args="--enable_statestored_ha --enable_catalogd_ha")
@@ -410,7 +430,10 @@ class TestStatestoredHA(CustomClusterTestSuite):
     statestored_args="--use_network_address_as_statestore_priority=true "
                      "--statestore_ha_heartbeat_monitoring_frequency_ms=50 "
                      "--heartbeat_monitoring_frequency_ms=6000 "
-                     "--statestore_peer_timeout_seconds=2 ",
+                     "--statestore_peer_timeout_seconds=2 "
+                     "--statestore_heartbeat_tcp_timeout_seconds={timeout_s} "
+                     "--statestore_update_statestore_tcp_timeout_seconds={timeout_s}"
+                     .format(timeout_s=TRPC_TCP_TIMEOUT_S),
     impalad_args="--statestore_subscriber_timeout_seconds=2",
     catalogd_args="--statestore_subscriber_timeout_seconds=2",
     start_args="--enable_statestored_ha --enable_catalogd_ha")
@@ -536,7 +559,10 @@ class TestStatestoredHA(CustomClusterTestSuite):
                      "--statestore_ha_heartbeat_monitoring_frequency_ms=100 "
                      "--heartbeat_monitoring_frequency_ms=6000 "
                      "--statestore_peer_timeout_seconds=2 "
-                     "--debug_actions=DISABLE_STATESTORE_NETWORK",
+                     "--debug_actions=DISABLE_STATESTORE_NETWORK "
+                     "--statestore_heartbeat_tcp_timeout_seconds={timeout_s} "
+                     "--statestore_update_statestore_tcp_timeout_seconds={timeout_s}"
+                     .format(timeout_s=TRPC_TCP_TIMEOUT_S),
     impalad_args="--statestore_subscriber_timeout_seconds=2",
     catalogd_args="--statestore_subscriber_timeout_seconds=2",
     start_args="--enable_statestored_ha")
@@ -550,7 +576,10 @@ class TestStatestoredHA(CustomClusterTestSuite):
                      "--statestore_ha_heartbeat_monitoring_frequency_ms=100 "
                      "--heartbeat_monitoring_frequency_ms=6000 "
                      "--statestore_peer_timeout_seconds=2 "
-                     "--debug_actions=SEND_UPDATE_STATESTORED_RPC_FIRST_ATTEMPT:FAIL@1.0",
+                     "--debug_actions=SEND_UPDATE_STATESTORED_RPC_FIRST_ATTEMPT:FAIL@1.0 "
+                     "--statestore_heartbeat_tcp_timeout_seconds={timeout_s} "
+                     "--statestore_update_statestore_tcp_timeout_seconds={timeout_s}"
+                     .format(timeout_s=TRPC_TCP_TIMEOUT_S),
     impalad_args="--statestore_subscriber_timeout_seconds=2",
     catalogd_args="--statestore_subscriber_timeout_seconds=2",
     start_args="--enable_statestored_ha")
@@ -682,9 +711,12 @@ class TestStatestoredHA(CustomClusterTestSuite):
     statestored_args="--use_network_address_as_statestore_priority=true "
                      "--statestore_ha_heartbeat_monitoring_frequency_ms=50 "
                      "--heartbeat_monitoring_frequency_ms=6000 "
-                     "--statestore_peer_timeout_seconds={timeout_s} "
-                     "--use_subscriber_id_as_catalogd_priority=true"
-                     .format(timeout_s=SS_PEER_TIMEOUT_S),
+                     "--statestore_peer_timeout_seconds={peer_timeout_s} "
+                     "--use_subscriber_id_as_catalogd_priority=true "
+                     "--statestore_heartbeat_tcp_timeout_seconds={tcp_timeout_s} "
+                     "--statestore_update_statestore_tcp_timeout_seconds={tcp_timeout_s}"
+                     .format(peer_timeout_s=SS_PEER_TIMEOUT_S,
+                             tcp_timeout_s=TRPC_TCP_TIMEOUT_S),
     impalad_args="--statestore_subscriber_timeout_seconds={timeout_s} "
                  "--statestore_subscriber_recovery_grace_period_ms={recovery_period_ms}"
                  .format(timeout_s=SUBSCRIBER_TIMEOUT_S,
